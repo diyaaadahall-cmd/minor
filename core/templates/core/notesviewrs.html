@@ -1,0 +1,105 @@
+[ 11 June 2026 12:54 ] ⁨lp⁩: <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subject Study | IOE BCT</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8fafc; font-family: 'Plus Jakarta Sans', sans-serif; }
+        
+        /* Layout /
+        .study-container { height: 90vh; display: flex; gap: 20px; padding: 20px; }
+        
+        / PDF Viewer /
+        .pdf-section { flex: 2; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; display: flex; flex-direction: column; }
+        .pdf-header { padding: 15px 20px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .pdf-viewer { flex: 1; display: flex; align-items: center; justify-content: center; background: #e2e8f0; }
+
+        / Chatbot */
+        .chat-section { flex: 1; background: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); display: flex; flex-direction: column; overflow: hidden; }
+        .chat-header { padding: 15px; background: #1e293b; color: white; font-weight: 600; }
+        .chat-body { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .chat-input { padding: 15px; border-top: 1px solid #eee; }
+        
+        .msg { padding: 10px 15px; border-radius: 12px; max-width: 85%; }
+        .msg.ai { background: #f1f5f9; align-self: flex-start; }
+        .msg.user { background: #3b82f6; color: white; align-self: flex-end; }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="py-3">
+        <a href="dashboard.html" class="text-decoration-none text-dark fw-bold"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+    </div>
+
+    <div class="study-container">
+        <!-- LEFT: PDF -->
+        <div class="pdf-section">
+            <div class="pdf-header">
+                <h5 id="subjectTitle" class="mb-0 fw-bold">Loading Subject...</h5>
+                <button class="btn btn-sm btn-danger"><i class="bi bi-file-earmark-pdf"></i> Download PDF</button>
+                <button class="btn btn-sm btn-success ms-2" onclick="goToTestPage()">
+                    <i class="bi bi-question-circle"></i> Do you want to test yourself?
+                </button>
+            </div>
+            <div class="pdf-viewer">
+                <p class="text-muted"><i class="bi bi-book fs-1 d-block mb-2"></i> PDF content will be rendered here.</p>
+            </div>
+        </div>
+
+        <!-- RIGHT: CHATBOT -->
+        <div class="chat-section">
+            <div class="chat-header"><i class="bi bi-robot"></i> AI Tutor</div>
+            <div class="chat-body" id="chatLog">
+                <div class="msg ai">Hello! I'm your AI tutor. Ask me anything about this subject!</div>
+            </div>
+            <div class="chat-input">
+                <div class="input-group">
+                    <input type="text" id="userInput" class="form-control" placeholder="Type a question...">
+                    <button class="btn btn-primary" onclick="sendMessage()"><i class="bi bi-send-fill"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 1. Load Data
+    const course = JSON.parse(localStorage.getItem('selected_course'));
+    if (course) {
+        document.getElementById('subjectTitle').textContent = `${course.code}: ${course.title}`;
+    }
+
+    // 2. Chat Logic
+    function sendMessage() {
+        const input = document.getElementById('userInput');
+        const log = document.getElementById('chatLog');
+        if (input.value.trim() === "") return;
+
+        // User Message
+        log.innerHTML += `<div class="msg user">${input.value}</div>`;
+        
+        // AI Response (Mockup)
+        setTimeout(() => {
+            log.innerHTML += `<div class="msg ai">I am analyzing ${course ? course.title : 'the notes'} for your query: "${input.value}"</div>`;
+            log.scrollTop = log.scrollHeight;
+        }, 500);
+
+        input.value = "";
+        log.scrollTop = log.scrollHeight;
+    }
+</script>
+<script>
+function goToTestPage() {
+    const course = JSON.parse(localStorage.getItem('selected_course'));
+    if (course) {
+        localStorage.setItem('test_subject', JSON.stringify(course));
+    }
+    window.location.href = 'test.html';
+}
+</script>
+</body>
+</html>

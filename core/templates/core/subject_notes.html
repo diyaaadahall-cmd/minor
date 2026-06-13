@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ subject_name }} | IOE BCT Learning Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: #f4f6f9;
+            color: #162033;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .topbar {
+            background: #ffffff;
+            border-bottom: 1px solid #e5eaf1;
+        }
+        .study-shell {
+            min-height: calc(100vh - 74px);
+        }
+        .pdf-list {
+            background: #ffffff;
+            border-right: 1px solid #e5eaf1;
+        }
+        .note-button {
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            color: #334155;
+            text-align: left;
+            transition: 0.2s ease;
+        }
+        .note-button:hover,
+        .note-button.active {
+            background: #eaf2ff;
+            border-color: #8bb8ff;
+            color: #0b5ed7;
+        }
+        .viewer-panel,
+        .chat-panel {
+            background: #ffffff;
+            border: 1px solid #e5eaf1;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .pdf-canvas-wrap {
+            width: 100%;
+            height: calc(100vh - 188px);
+            min-height: 520px;
+            background: #eef2f7;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            overflow: auto;
+            padding: 1rem;
+        }
+        .pdf-canvas {
+            background: #ffffff;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.14);
+            max-width: 100%;
+        }
+        .pdf-status {
+            color: #64748b;
+            padding: 2rem;
+            text-align: center;
+        }
+        .chat-panel {
+            height: calc(100vh - 118px);
+            min-height: 620px;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 1rem;
+        }
+        .chat-log {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            overflow-y: auto;
+            padding: 1rem;
+        }
+        .message {
+            border-radius: 8px;
+            line-height: 1.5;
+            max-width: 90%;
+            padding: 0.75rem 0.9rem;
+            white-space: pre-wrap;
+        }
+        .message.ai {
+            align-self: flex-start;
+            background: #f1f5f9;
+            color: #243244;
+        }
+        .message.user {
+            align-self: flex-end;
+            background: #0d6efd;
+            color: #ffffff;
+        }
+        .empty-state {
+            min-height: calc(100vh - 180px);
+        }
+        @media (max-width: 991.98px) {
+            .pdf-list {
+                border-right: 0;
+                border-bottom: 1px solid #e5eaf1;
+            }
+            .pdf-canvas-wrap,
+            .chat-panel {
+                height: 70vh;
+                min-height: 480px;
+            }
+        }
+    </style>
+</head>
+<body>
+<header class="topbar">
+    <div class="container-fluid px-4 py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <a href="{% url 'dashboard' %}" class="text-decoration-none text-secondary fw-semibold">
+                <i class="bi bi-arrow-left"></i> Dashboard
+            </a>
+            <h1 class="h4 fw-bold mb-0 mt-1">{{ subject_name }}</h1>
+        </div>
+        {% if selected_note %}
+            <a id="downloadLink" href="{{ selected_note.pdf.url }}" class="btn btn-outline-danger" target="_blank" rel="noopener">
+                <i class="bi bi-file-earmark-arrow-down"></i> Download PDF
+            </a>
+        {% endif %}
+    </div>
+</header>
+
+<main class="container-fluid study-shell">
+    {% if notes %}
+        <div class="row g-0">
+            <aside class="col-lg-2 pdf-list p-3">
+                <h2 class="h6 fw-bold mb-3">Uploaded PDFs</h2>
+                <div class="d-flex flex-column gap-2">
+                    {% for note in notes %}
+                        <button
+                            type="button"
+                            class="note-button btn btn-light p-3 {% if note.id == selected_note.id %}active{% endif %}"
+                            data-note-id="{{ note.id }}"
+                            data-pdf-url="{{ note.pdf.url }}"
+                            data-pdf-name="{{ note.pdf.name|cut:'notes/' }}"
+                        >
+                            <span class="d-flex align-items-start gap-2">
+                                <i class="bi bi-file-earmark-pdf-fill text-danger"></i>
+                                <span class="small fw-semibold">{{ note.pdf.name|cut:'notes/' }}</span>
+                            </span>
+                        </button>
+                    {% endfor %}
+                </div>
+            </aside>
+
+            <section class="col-lg-7 p-3">
+                <div class="viewer-panel">
+                    <div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between gap-3">
+                        <div>
+                            <span class="small text-muted d-block">Now viewing</span>
+                            <strong id="activePdfName">{{ selected_note.pdf.name|cut:'notes/' }}</strong>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <button id="prevPageBtn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Previous page">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <span id="pageInfo" class="small fw-semibold text-nowrap">Page 1</span>
+                            <button id="nextPageBtn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Next page">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            <button id="zoomOutBtn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Zoom out">
+                                <i class="bi bi-zoom-out"></i>
+                            </button>
+                            <button id="zoomInBtn" class="btn btn-sm btn-outline-secondary" type="button" aria-label="Zoom in">
+                                <i class="bi bi-zoom-in"></i>
+                            </button>
+                            <a id="openPdfLink" href="{{ selected_note.pdf.url }}" class="btn btn-sm btn-outline-primary" target="_blank" rel="noopener">
+                                <i class="bi bi-box-arrow-up-right"></i> Open
+                            </a>
+                        </div>
+                    </div>
+                    <div class="pdf-canvas-wrap">
+                        <canvas id="pdfCanvas" class="pdf-canvas"></canvas>
+                        <div id="pdfStatus" class="pdf-status">Loading PDF...</div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="col-lg-3 p-3 ps-lg-0">
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <div class="fw-bold"><i class="bi bi-robot"></i> PDF Chat Bot</div>
+                        <div class="small opacity-75">Ask about the selected PDF.</div>
+                    </div>
+                    <div id="chatLog" class="chat-log">
+                        <div class="message ai">I am reading {{ selected_note.pdf.name|cut:'notes/' }}. Ask me anything about this PDF.</div>
+                    </div>
+                    <form id="chatForm" class="p-3 border-top">
+                        {% csrf_token %}
+                        <div class="input-group">
+                            <input id="questionInput" name="question" class="form-control" type="text" placeholder="Ask about this PDF..." autocomplete="off">
+                            <button class="btn btn-primary" type="submit" aria-label="Send question">
+                                <i class="bi bi-send-fill"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+        </div>
+    {% else %}
+        <div class="empty-state d-flex align-items-center justify-content-center text-center">
+            <div>
+                <i class="bi bi-folder-x display-4 text-secondary"></i>
+                <h2 class="h4 fw-bold mt-3">No PDFs uploaded for this subject.</h2>
+                <p class="text-muted mb-0">Upload notes for {{ subject_name }} from the Django admin to view and chat with them here.</p>
+            </div>
+        </div>
+    {% endif %}
+</main>
+
+{% if notes %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+{{ note_progress|json_script:"noteProgressData" }}
+<script>
+    const chatUrl = "{% url 'pdf_chat' subject_name %}";
+    const progressUrl = "{% url 'update_note_progress' subject_name %}";
+    const savedProgress = JSON.parse(document.getElementById('noteProgressData').textContent);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const noteButtons = document.querySelectorAll('.note-button');
+    const pdfCanvas = document.getElementById('pdfCanvas');
+    const pdfStatus = document.getElementById('pdfStatus');
+    const pdfContext = pdfCanvas.getContext('2d');
+    const activePdfName = document.getElementById('activePdfName');
+    const openPdfLink = document.getElementById('openPdfLink');
+    const downloadLink = document.getElementById('downloadLink');
+    const pageInfo = document.getElementById('pageInfo');
+    const prevPageBtn = document.getElementById('prevPageBtn');
+    const nextPageBtn = document.getElementById('nextPageBtn');
+    const zoomOutBtn = document.getElementById('zoomOutBtn');
+    const zoomInBtn = document.getElementById('zoomInBtn');
+    const chatLog = document.getElementById('chatLog');
+    const chatForm = document.getElementById('chatForm');
+    const questionInput = document.getElementById('questionInput');
+    let activeNoteId = "{{ selected_note.id }}";
+    let activePdfUrl = "{{ selected_note.pdf.url }}";
+    let pdfDocument = null;
+    let currentPage = 1;
+    let currentScale = 1.2;
+    let renderTask = null;
+    let progressSaveTimer = null;
+
+    if (window.pdfjsLib) {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        loadPdf(activePdfUrl);
+    } else {
+        showPdfError('The in-page PDF viewer could not load. Use Open to view the PDF in a new tab.');
+    }
+
+    function appendMessage(text, type) {
+        const message = document.createElement('div');
+        message.className = `message ${type}`;
+        message.textContent = text;
+        chatLog.appendChild(message);
+        chatLog.scrollTop = chatLog.scrollHeight;
+        return message;
+    }
+
+    function setViewerLoading(message) {
+        pdfStatus.textContent = message;
+        pdfStatus.style.display = 'block';
+        pdfCanvas.style.display = 'none';
+    }
+
+    function showPdfError(message) {
+        pdfStatus.innerHTML = `${message}<br><a href="${activePdfUrl}" target="_blank" rel="noopener">Open PDF directly</a>`;
+        pdfStatus.style.display = 'block';
+        pdfCanvas.style.display = 'none';
+    }
+
+    async function loadPdf(pdfUrl) {
+        if (!window.pdfjsLib) {
+            showPdfError('The in-page PDF viewer could not load.');
+            return;
+        }
+
+        activePdfUrl = pdfUrl;
+        currentPage = 1;
+        setViewerLoading('Loading PDF...');
+
+        try {
+            pdfDocument = await pdfjsLib.getDocument(pdfUrl).promise;
+            await renderPage(currentPage);
+        } catch (error) {
+            showPdfError('This PDF could not be rendered in place.');
+        }
+    }
+
+    async function renderPage(pageNumber) {
+        if (!pdfDocument) return;
+
+        if (renderTask) {
+            renderTask.cancel();
+        }
+
+        setViewerLoading('Rendering page...');
+
+        try {
+            const page = await pdfDocument.getPage(pageNumber);
+            const viewport = page.getViewport({ scale: currentScale });
+
+            pdfCanvas.width = viewport.width;
+            pdfCanvas.height = viewport.height;
+            pdfCanvas.style.display = 'block';
+            pdfStatus.style.display = 'none';
+
+            renderTask = page.render({
+                canvasContext: pdfContext,
+                viewport: viewport,
+            });
+
+            await renderTask.promise;
+            renderTask = null;
+
+            pageInfo.textContent = `Page ${currentPage} of ${pdfDocument.numPages}`;
+            prevPageBtn.disabled = currentPage <= 1;
+            nextPageBtn.disabled = currentPage >= pdfDocument.numPages;
+            queueProgressSave();
+        } catch (error) {
+            if (error && error.name === 'RenderingCancelledException') return;
+            showPdfError('This page could not be rendered in place.');
+        }
+    }
+
+    noteButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            noteButtons.forEach((item) => item.classList.remove('active'));
+            button.classList.add('active');
+
+            activeNoteId = button.dataset.noteId;
+            activePdfName.textContent = button.dataset.pdfName;
+            openPdfLink.href = button.dataset.pdfUrl;
+            downloadLink.href = button.dataset.pdfUrl;
+            loadPdf(button.dataset.pdfUrl);
+            updateProgressMessage();
+
+            appendMessage(`Now reading ${button.dataset.pdfName}.`, 'ai');
+        });
+    });
+
+    prevPageBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage -= 1;
+            renderPage(currentPage);
+        }
+    });
+
+    nextPageBtn.addEventListener('click', () => {
+        if (pdfDocument && currentPage < pdfDocument.numPages) {
+            currentPage += 1;
+            renderPage(currentPage);
+        }
+    });
+
+    zoomOutBtn.addEventListener('click', () => {
+        currentScale = Math.max(0.6, currentScale - 0.2);
+        renderPage(currentPage);
+    });
+
+    zoomInBtn.addEventListener('click', () => {
+        currentScale = Math.min(2.4, currentScale + 0.2);
+        renderPage(currentPage);
+    });
+
+    function updateProgressMessage() {
+        const progress = savedProgress[activeNoteId];
+        if (!progress || !progress.total_pages) return;
+
+        const percent = Math.round((progress.pages_read / progress.total_pages) * 100);
+        pageInfo.textContent = `Page ${currentPage} of ${progress.total_pages} | ${percent}% read`;
+    }
+
+    function queueProgressSave() {
+        clearTimeout(progressSaveTimer);
+        progressSaveTimer = setTimeout(saveProgress, 500);
+    }
+
+    async function saveProgress() {
+        if (!activeNoteId || !pdfDocument) return;
+
+        const formData = new FormData();
+        formData.append('note_id', activeNoteId);
+        formData.append('current_page', currentPage);
+        formData.append('total_pages', pdfDocument.numPages);
+
+        try {
+            const response = await fetch(progressUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            savedProgress[activeNoteId] = {
+                pages_read: data.pages_read,
+                total_pages: data.total_pages,
+            };
+            const percent = Math.round(data.percent);
+            pageInfo.textContent = `Page ${currentPage} of ${data.total_pages} | ${percent}% read`;
+        } catch (error) {
+            // Progress saving should never block reading.
+        }
+    }
+
+    chatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const question = questionInput.value.trim();
+        if (!question) return;
+
+        appendMessage(question, 'user');
+        questionInput.value = '';
+        const waitingMessage = appendMessage('Reading the PDF...', 'ai');
+
+        const formData = new FormData();
+        formData.append('question', question);
+        formData.append('note_id', activeNoteId);
+
+        try {
+            const response = await fetch(chatUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            });
+            const data = await response.json();
+            waitingMessage.textContent = response.ok ? data.answer : (data.error || 'I could not answer that question.');
+        } catch (error) {
+            waitingMessage.textContent = 'I could not reach the chat service. Please try again.';
+        }
+        chatLog.scrollTop = chatLog.scrollHeight;
+    });
+</script>
+{% endif %}
+</body>
+</html>

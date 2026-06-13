@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard - IOE BCT Learning Portal</title>
+    <!-- Bootstrap 5 CSS CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f4f6f9;
+        }
+        /* Dashboard Layout Architecture */
+        .sidebar {
+            min-height: 100vh;
+            background-color: #1e293b;
+            color: #ffffff;
+        }
+        .sidebar .nav-link {
+            color: #94a3b8;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            color: #ffffff;
+            background-color: #334155;
+        }
+        /* Classy Syllabus Card Styling */
+        .subject-card {
+            background: #ffffff;
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 4px 18px rgba(0,0,0,0.03);
+            transition: all 0.25s ease;
+        }
+        .subject-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px rgba(30, 41, 59, 0.08);
+        }
+        .code-badge {
+            font-size: 0.75rem;
+            font-weight: 600;
+            background-color: #f1f5f9;
+            color: #475569;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+        }
+        .progress {
+            height: 6px;
+            border-radius: 3px;
+        }
+        .site-chat-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: min(420px, 100vw);
+            background: #ffffff;
+            border-left: 1px solid #e2e8f0;
+            box-shadow: -16px 0 40px rgba(15, 23, 42, 0.18);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 1050;
+        }
+        .site-chat-panel.open {
+            transform: translateX(0);
+        }
+        .site-chat-header {
+            background: #1e293b;
+            color: #ffffff;
+            padding: 1rem;
+        }
+        .site-chat-log {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding: 1rem;
+        }
+        .site-chat-message {
+            border-radius: 8px;
+            line-height: 1.5;
+            max-width: 90%;
+            padding: 0.75rem 0.9rem;
+            white-space: pre-wrap;
+        }
+        .site-chat-message.bot {
+            align-self: flex-start;
+            background: #f1f5f9;
+            color: #243244;
+        }
+        .site-chat-message.user {
+            align-self: flex-end;
+            background: #0d6efd;
+            color: #ffffff;
+        }
+        .site-chat-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.28);
+            display: none;
+            z-index: 1040;
+        }
+        .site-chat-backdrop.open {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        
+        <!-- SIDE NAVIGATION BAR -->
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse p-3">
+            <div class="position-sticky">
+                <div class="d-flex align-items-center gap-2 px-2 py-3 border-bottom border-secondary mb-4">
+                    <i class="bi bi-cpu-fill text-primary fs-4"></i>
+                    <h5 class="mb-0 fw-bold text-white">IOE BCT Portal</h5>
+                </div>
+                
+                <ul class="nav flex-column gap-2">
+                    <li class="nav-item">
+                        <a href="{% url 'dashboard' %}" class="nav-link active p-3 rounded d-flex align-items-center gap-3">
+                            <i class="bi bi-grid-1x2-fill"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#coursesContainer" class="nav-link p-3 rounded d-flex align-items-center gap-3">
+                            <i class="bi bi-book-half"></i> Academic Notes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <button id="openSiteChat" type="button" class="nav-link border-0 w-100 p-3 rounded d-flex align-items-center gap-3 bg-transparent">
+                            <i class="bi bi-chat-dots-fill"></i> AI Tutor Chatbot
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link p-3 rounded d-flex align-items-center gap-3">
+                            <i class="bi bi-journal-check"></i> Practice Quizzes
+                        </a>
+                    </li>
+                </ul>
+                
+                <div class="mt-5 pt-5 px-2">
+                    <div class="bg-dark bg-opacity-20 p-3 rounded-3 text-center">
+                        <small class="d-block text-muted">Logged in as</small>
+                        <span class="small fw-semibold text-white">077BCT101</span>
+                        <a href="{% url 'home' %}" class="btn btn-sm btn-outline-danger w-100 mt-2">Sign Out</a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT CONSOLE -->
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            
+            <!-- HEADER -->
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-4 border-bottom">
+                <div>
+                    <h1 class="h2 fw-bold text-dark">Welcome Back, Student!</h1>
+                    <p class="text-muted">Institute of Engineering, Pulchowk Campus • Bachelor in Computer Engineering</p>
+                </div>
+                
+                <!-- Dynamic Semester Dropdown Tool (Added IDs and clean values) -->
+                <div>
+                    <select id="semesterSelect" class="form-select border-0 shadow-sm px-3 py-2 rounded-3 fw-semibold text-primary" style="background-color: #fff;">
+                        <option value="1-1" selected>Year I - Part I (1st Sem)</option>
+                        <option value="1-2">Year I - Part II (2nd Sem)</option>
+                        <option value="2-1">Year II - Part I (3rd Sem)</option>
+                        <option value="2-2">Year II - Part II (4th Sem)</option>
+                        <option value="3-1">Year III - Part I (5th Sem)</option>
+                        <option value="3-2">Year III - Part II (6th Sem)</option>
+                        <option value="4-1">Year IV - Part I (7th Sem)</option>
+                        <option value="4-2">Year IV - Part II (8th Sem)</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- PERFORMANCE TRACKING METRICS BAR -->
+            <div class="row g-3 mb-4">
+                <div class="col-6 col-lg-3">
+                    <div class="p-3 bg-white rounded-3 shadow-sm border-0 d-flex align-items-center gap-3">
+                        <div class="bg-primary bg-opacity-10 p-2 rounded-3 text-primary"><i class="bi bi-collection-play fs-4"></i></div>
+                        <div><small class="text-muted d-block">Modules Active</small><span id="activeModulesCount" class="fw-bold text-dark">6 Courses</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="p-3 bg-white rounded-3 shadow-sm border-0 d-flex align-items-center gap-3">
+                        <div class="bg-success bg-opacity-10 p-2 rounded-3 text-success"><i class="bi bi-check2-circle fs-4"></i></div>
+                        <div><small class="text-muted d-block">Pages Read</small><span id="pagesReadCount" class="fw-bold text-dark">{{ total_pages_read }} / {{ total_pages_available }}</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="p-3 bg-white rounded-3 shadow-sm border-0 d-flex align-items-center gap-3">
+                        <div class="bg-warning bg-opacity-10 p-2 rounded-3 text-warning"><i class="bi bi-lightning-charge fs-4"></i></div>
+                        <div><small class="text-muted d-block">Subjects With PDFs</small><span id="subjectsWithNotesCount" class="fw-bold text-dark">{{ subjects_with_notes }} Subjects</span></div>
+                    </div>
+                </div>
+                <div class="col-6 col-lg-3">
+                    <div class="p-3 bg-white rounded-3 shadow-sm border-0 d-flex align-items-center gap-3">
+                        <div class="bg-info bg-opacity-10 p-2 rounded-3 text-info"><i class="bi bi-award fs-4"></i></div>
+                        <div><small class="text-muted d-block">Semester Progress</small><span id="semesterProgressCount" class="fw-bold text-dark">0 / 0 Pages</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SYLLABUS COURSE GRID MODULES -->
+            <h4 id="semesterTitle" class="fw-bold text-dark mb-3">Your First Semester Courses</h4>
+            <div id="coursesContainer" class="row g-4">
+                <!-- JavaScript will populate course cards here dynamically -->
+            </div>
+        </main>
+    </div>
+</div>
+
+<div id="siteChatBackdrop" class="site-chat-backdrop"></div>
+<aside id="siteChatPanel" class="site-chat-panel" aria-label="Website assistant">
+    <div class="site-chat-header d-flex align-items-center justify-content-between gap-3">
+        <div>
+            <div class="fw-bold"><i class="bi bi-robot"></i> Website Assistant</div>
+            <div class="small opacity-75">Ask about notes, availability, progress, and uploads.</div>
+        </div>
+        <button id="closeSiteChat" type="button" class="btn btn-sm btn-outline-light" aria-label="Close chatbot">
+            <i class="bi bi-x-lg"></i>
+        </button>
+    </div>
+    <div id="siteChatLog" class="site-chat-log">
+        <div class="site-chat-message bot">Hi. I can answer general questions about this website, uploaded notes, PDF availability, reading progress, and how to upload PDFs.</div>
+    </div>
+    <form id="siteChatForm" class="p-3 border-top">
+        {% csrf_token %}
+        <div class="input-group">
+            <input id="siteChatInput" class="form-control" type="text" placeholder="Ask about notes or progress..." autocomplete="off">
+            <button class="btn btn-primary" type="submit" aria-label="Send question">
+                <i class="bi bi-send-fill"></i>
+            </button>
+        </div>
+    </form>
+</aside>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+{{ subject_progress|json_script:"subjectProgressData" }}
+
+<script>
+    const siteChatUrl = "{% url 'site_chatbot' %}";
+    const subjectProgress = JSON.parse(document.getElementById('subjectProgressData').textContent);
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    function normalizeSubject(title) {
+        return title.trim().toLowerCase();
+    }
+
+    function progressForCourse(course) {
+        return subjectProgress[normalizeSubject(course.title)] || {
+            pages_read: 0,
+            total_pages: 0,
+            pdf_count: 0,
+        };
+    }
+
+    function progressPercent(progress) {
+        if (!progress.total_pages) return 0;
+        return Math.round((progress.pages_read / progress.total_pages) * 100);
+    }
+
+    // Exact IOE BCT Syllabus Dataset mapped directly from your provided screenshot files
+    const syllabusData = {
+        "1-1": {
+            title: "Your First Semester Courses",
+            courses: [
+                { code: "ENSH 101", title: "Engineering Mathematics I", credits: 3, type: "primary", desc: "Calculus, vectors, infinite series, matrix transformations, and system equations applications." },
+                { code: "ENCT 101", title: "Computer Programming", credits: 3, type: "primary", desc: "Core computational problem-solving paradigms using syntax structures, arrays, pointers, and files in C." },
+                { code: "ENME 101", title: "Engineering Drawing", credits: 2, type: "secondary", desc: "Orthographic projections, isometric structural views, and introductory CAD mechanical projections." },
+                { code: "ENEX 101", title: "Fundamental of Electrical and Electronics Engineering", credits: 3, type: "primary", desc: "DC/AC circuit evaluation loops, network rules, semiconductor diodes, and logic gates basics." },
+                { code: "ENSH 102", title: "Engineering Physics", credits: 4, type: "primary", desc: "Wave mechanics oscillations, physical optics interventions, electromagnetism fields, and quantum physics." },
+                { code: "ENME 106", title: "Engineering Workshop", credits: 1, type: "secondary", desc: "Practical exposure run maps inside metalworking benches, foundry operations, and welding structures." }
+            ]
+        },
+        "1-2": {
+            title: "Your Second Semester Courses",
+            courses: [
+                { code: "ENSH 151", title: "Engineering Mathematics II", credits: 3, type: "primary", desc: "Differential equations, Laplace transforms, Fourier series, and linear programming methods." },
+                { code: "ENCT 151", title: "Object Oriented Programming", credits: 3, type: "primary", desc: "Classes, objects, inheritance, polymorphism, templates, and exception handling protocols using C++." },
+                { code: "ENEX 152", title: "Digital Logic", credits: 3, type: "primary", desc: "Boolean algebra, combinational networks, sequential synchronous logic circuits, counters, and registers." },
+                { code: "ENEX 151", title: "Electronic Device and Circuits", credits: 3, type: "primary", desc: "BJT/FET amplifier designs, operational amplifiers, frequency dependencies, and power supply structures." },
+                { code: "ENSH 153", title: "Engineering Chemistry", credits: 3, type: "primary", desc: "Electrochemistry, polymers, metallurgy, fuel technology, and environmental chemistry applications." },
+                { code: "ENEE 154", title: "Electrical Circuits and Machines", credits: 4, type: "primary", desc: "Analysis of AC circuits, magnetic circuits, transformers, and electrical machines engineering concepts." }
+            ]
+        },
+        "2-1": {
+            title: "Your Third Semester Courses",
+            courses: [
+                { code: "ENSH 201", title: "Engineering Mathematics III", credits: 3, type: "primary", desc: "Partial differential equations, complex variables, probability distributions, and Z-transforms." },
+                { code: "ENSH 204", title: "Communication English", credits: 3, type: "primary", desc: "Technical writing mechanics, presentation strategies, engineering reports, and formal grammar structures." },
+                { code: "ENCT 201", title: "Computer Graphics and Visualization", credits: 3, type: "primary", desc: "Line rendering routines, 2D/3D matrix shapes, clipping operations, and ray tracing shading models." },
+                { code: "ENCT 202", title: "Foundation of Data Science", credits: 3, type: "primary", desc: "Introduction to data analysis, statistical modeling, data cleaning, and programming tools for data extraction." },
+                { code: "ENCT 203", title: "Theory of Computation", credits: 3, type: "primary", desc: "Finite automata, regular expressions, context-free languages, Turing machines, and computational complexity theory." },
+                { code: "ENEX 201", title: "Microprocessors", credits: 3, type: "primary", desc: "8085/8086 micro-architectures, assembly language programs, interrupt structures, and physical interface chips." }
+            ]
+        },
+        "2-2": {
+            title: "Your Fourth Semester Courses",
+            courses: [
+                { code: "ENSH 252", title: "Numerical Methods", credits: 3, type: "primary", desc: "Root approximations, interpolation frameworks, numeric integration matrices, and differential problem steps." },
+                { code: "ENEX 252", title: "Instrumentation", credits: 4, type: "primary", desc: "Transducer analytics, analog signaling systems, bridge network calculations, and measurement layouts." },
+                { code: "ENEX 254", title: "Electromagnetics", credits: 3, type: "primary", desc: "Electric and magnetic fields, Maxwell's equations, wave propagation, and transmission lines engineering." },
+                { code: "ENCT 252", title: "Data Structure and Algorithm", credits: 3, type: "primary", desc: "Linked lists, stacks, queues, trees, advanced sorting architectures, and computational analysis metrics." },
+                { code: "ENCT 253", title: "Data Communication", credits: 3, type: "primary", desc: "Signal transmission properties, encoding, multiplexing, error detection, and data link layer standards." },
+                { code: "ENCT 254", title: "Operating System", credits: 3, type: "primary", desc: "Process scheduling rules, memory page maps, file structures, concurrency synchronization, and deadlocks." }
+            ]
+        },
+        "3-1": {
+            title: "Your Fifth Semester Courses",
+            courses: [
+                { code: "ENSH 304", title: "Probability and Statistics", credits: 3, type: "primary", desc: "Probability theories, discrete/continuous random variables, sampling distributions, and hypothesis checks." },
+                { code: "ENCT 301", title: "Database Management System", credits: 3, type: "primary", desc: "Relational entity layouts, complex SQL scripts, normalization steps, transaction models, and concurrency controls." },
+                { code: "ENCT 302", title: "Web Application Programming", credits: 3, type: "primary", desc: "Frontend layouts, backend services architecture, RESTful API structures, and full-stack system setups." },
+                { code: "ENCT 303", title: "Computer Organization and Architecture", credits: 3, type: "primary", desc: "Instruction set pipelines, ALU execution models, memory hierarchies, and processor organization architectures." },
+                { code: "ENCT 304", title: "Computer Networks", credits: 3, type: "primary", desc: "OSI/TCP-IP layout levels, routing algorithm routines, subnet configurations, and network transport protocols." },
+                { code: "ENCT 325-344", title: "Elective I", credits: 3, type: "primary", desc: "Specialized departmental study pathways focusing on advanced specific computer application domains." }
+            ]
+        },
+        "3-2": {
+            title: "Your Sixth Semester Courses",
+            courses: [
+                { code: "ENCE 356", title: "Engineering Economics", credits: 3, type: "primary", desc: "Time value mechanics, cash flow analysis calculations, benefit-cost structures, and risk evaluations." },
+                { code: "ENCT 351", title: "Artificial Intelligence", credits: 3, type: "primary", desc: "Heuristic tree paths, logic knowledge frameworks, neural net algorithms, and intelligent systems systems." },
+                { code: "ENCT 352", title: "Software Engineering", credits: 3, type: "primary", desc: "SDLC cycle maps, agile sprints, UML diagram architectures, software pattern testing, and validation layouts." },
+                { code: "ENCT 353", title: "Simulation and Modeling", credits: 3, type: "primary", desc: "Continuous and discrete simulation models, random number generation, and validation of engineering configurations." },
+                { code: "ENCT 354", title: "Minor Project", credits: 1, type: "secondary", desc: "Hands-on collaborative design blueprint application and execution project addressing practical engineering targets." },
+                { code: "ENCT 385-399", title: "Elective II", credits: 3, type: "primary", desc: "Advanced technical electives dealing with modern engineering tracks and domain applications." }
+            ]
+        },
+        "4-1": {
+            title: "Your Seventh Semester Courses",
+            courses: [
+                { code: "ENEX 416", title: "Digital Signal Analysis and Processing", credits: 4, type: "primary", desc: "Discrete-time signals, Z-transforms, Discrete Fourier Transform (DFT), and digital filter configurations." },
+                { code: "ENCT 411", title: "Distributed and Cloud Computing", credits: 3, type: "primary", desc: "Distributed system setups, virtualization architectures, cloud infrastructure systems, and microservices environments." },
+                { code: "ENCT 412", title: "ICT Project Management", credits: 3, type: "primary", desc: "CPM/PERT chart paths, software estimation workflows, risk controls, and project quality strategies." },
+                { code: "ENEX 417", title: "Energy, Environment and Social Engineering", credits: 3, type: "primary", desc: "Sustainable energy systems, impact reviews, pollution metrics, and ethics in engineering infrastructure developments." },
+                { code: "ENCT 435-444", title: "Elective III", credits: 3, type: "primary", desc: "Deep technical specialized focus courses exploring customized computer systems frameworks." },
+                { code: "ENCT 413", title: "Project I", credits: 2, type: "secondary", desc: "Initial formulation phase, system research specs, planning architectures, and progress design defenses." }
+            ]
+        },
+        "4-2": {
+            title: "Your Eighth Semester Courses",
+            courses: [
+                { code: "ENCT 463", title: "Network and Cyber Security", credits: 3, type: "primary", desc: "Cryptographic protocols, system firewalls, identity validation architectures, and vulnerability defense frameworks." },
+                { code: "ENCT 465-474", title: "Elective IV", credits: 3, type: "primary", desc: "Final semester technical elective focusing on specialization topics and trending engineering tracks." },
+                { code: "ENCT 462", title: "Internship**", credits: 4, type: "primary", desc: "An 8-weeks real-world corporate workspace placement tracking practical industry technical solutions." },
+                { code: "ENCT 461", title: "Project II", credits: 4, type: "primary", desc: "Full software pipeline development deployment, deep system verification testing, and formal thesis presentation rules." }
+            ]
+        }
+    };
+
+
+    // Grab UI element handles
+    const semesterSelect = document.getElementById('semesterSelect');
+    const semesterTitle = document.getElementById('semesterTitle');
+    const coursesContainer = document.getElementById('coursesContainer');
+    const activeModulesCount = document.getElementById('activeModulesCount');
+    const semesterProgressCount = document.getElementById('semesterProgressCount');
+
+    // Render Engine Function
+    function renderSemester(semesterKey) {
+        const semesterData = syllabusData[semesterKey];
+        
+        if (!semesterData) return;
+
+        // Update headers and stat indicators
+        semesterTitle.textContent = semesterData.title;
+        activeModulesCount.textContent = `${semesterData.courses.length} Courses`;
+        const semesterTotals = semesterData.courses.reduce((totals, course) => {
+            const progress = progressForCourse(course);
+            totals.pagesRead += progress.pages_read;
+            totals.totalPages += progress.total_pages;
+            return totals;
+        }, { pagesRead: 0, totalPages: 0 });
+        const semesterPercent = semesterTotals.totalPages
+            ? Math.round((semesterTotals.pagesRead / semesterTotals.totalPages) * 100)
+            : 0;
+        semesterProgressCount.textContent = `${semesterTotals.pagesRead} / ${semesterTotals.totalPages} Pages (${semesterPercent}%)`;
+
+        // Clear container rows
+        coursesContainer.innerHTML = '';
+
+        // Generate dynamic cards
+        semesterData.courses.forEach(course => {
+            const progress = progressForCourse(course);
+            const percent = progressPercent(progress);
+            const progressColor = percent >= 100 ? 'bg-success' : (percent > 0 ? 'bg-primary' : 'bg-secondary');
+            const progressLabel = progress.total_pages
+                ? `${progress.pages_read}/${progress.total_pages} pages (${percent}%)`
+                : 'No PDFs uploaded';
+            const cardHTML = `
+                <div class="col-md-6 col-xl-4">
+                    <div class="card h-100 subject-card p-4">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <span class="code-badge">${course.code}</span>
+                            <span class="badge bg-${course.type} bg-opacity-10 text-${course.type} small">${course.credits} Credits</span>
+                        </div>
+                        <h5 class="fw-bold text-dark mb-2">${course.title}</h5>
+                        <p class="text-muted small mb-4">${course.desc}</p>
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between small text-muted mb-1">
+                                <span>Reading progress</span>
+                                <span>${progressLabel}</span>
+                            </div>
+                            <div class="progress mb-3">
+                                <div class="progress-bar ${progressColor}" style="width: ${percent}%"></div>
+                            </div>
+                            <a href="/subject/${encodeURIComponent(course.title)}/"
+   class="btn btn-outline-primary btn-sm w-100 py-2 rounded-3 fw-semibold">
+   Launch Subject Study
+</a>
+                        </div>
+                    </div>
+                </div>
+            `;
+            coursesContainer.insertAdjacentHTML('beforeend', cardHTML);
+        });
+    }
+
+    // Set listener triggers
+    semesterSelect.addEventListener('change', (e) => {
+        renderSemester(e.target.value);
+    });
+
+    // Boot load layout targeting first semester data configuration
+    renderSemester('1-1');
+
+    const openSiteChat = document.getElementById('openSiteChat');
+    const closeSiteChat = document.getElementById('closeSiteChat');
+    const siteChatPanel = document.getElementById('siteChatPanel');
+    const siteChatBackdrop = document.getElementById('siteChatBackdrop');
+    const siteChatLog = document.getElementById('siteChatLog');
+    const siteChatForm = document.getElementById('siteChatForm');
+    const siteChatInput = document.getElementById('siteChatInput');
+
+    function toggleSiteChat(open) {
+        siteChatPanel.classList.toggle('open', open);
+        siteChatBackdrop.classList.toggle('open', open);
+        if (open) {
+            siteChatInput.focus();
+        }
+    }
+
+    function appendSiteChatMessage(text, type) {
+        const message = document.createElement('div');
+        message.className = `site-chat-message ${type}`;
+        message.textContent = text;
+        siteChatLog.appendChild(message);
+        siteChatLog.scrollTop = siteChatLog.scrollHeight;
+        return message;
+    }
+
+    openSiteChat.addEventListener('click', () => toggleSiteChat(true));
+    closeSiteChat.addEventListener('click', () => toggleSiteChat(false));
+    siteChatBackdrop.addEventListener('click', () => toggleSiteChat(false));
+
+    siteChatForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const question = siteChatInput.value.trim();
+        if (!question) return;
+
+        appendSiteChatMessage(question, 'user');
+        siteChatInput.value = '';
+        const waitingMessage = appendSiteChatMessage('Checking the website data...', 'bot');
+
+        const formData = new FormData();
+        formData.append('question', question);
+
+        try {
+            const response = await fetch(siteChatUrl, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken },
+                body: formData,
+            });
+            const data = await response.json();
+            waitingMessage.textContent = response.ok ? data.answer : (data.error || 'I could not answer that.');
+        } catch (error) {
+            waitingMessage.textContent = 'I could not reach the website assistant. Please try again.';
+        }
+        siteChatLog.scrollTop = siteChatLog.scrollHeight;
+    });
+    
+</script>

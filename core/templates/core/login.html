@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome - Intelligent Learning Support System</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-container {
+            background: #ffffff;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.06);
+            max-width: 1000px;
+            width: 100%;
+            min-height: 600px;
+        }
+        .auth-side-banner {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3rem;
+            position: relative;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container p-3 d-flex justify-content-center">
+    <div class="row auth-container g-0">
+
+        <!-- LEFT SIDE -->
+        <div class="col-lg-5 d-none d-lg-flex auth-side-banner">
+            <div>
+                <h2>Intelligent Learning Support System</h2>
+                <p>Access notes, quizzes, and AI tutor.</p>
+            </div>
+        </div>
+
+        <!-- RIGHT SIDE -->
+        <div class="col-lg-7 p-5 d-flex flex-column justify-content-center">
+
+            <h4 class="fw-bold mb-4">Login Portal</h4>
+
+            <p class="text-muted small mb-3">
+                Please login with your credentials
+            </p>
+
+            <!-- ERROR MESSAGE -->
+            {% if error %}
+                <div class="alert alert-danger">{{ error }}</div>
+            {% endif %}
+
+            <!-- LOGIN FORM -->
+            <form method="POST">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" name="username" class="form-control" placeholder="Enter username" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">
+                    Login
+                </button>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
