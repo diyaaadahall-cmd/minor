@@ -81,6 +81,7 @@
             display: flex;
             flex-direction: column;
             gap: 0.75rem;
+            min-height: 0;
             overflow-y: auto;
             padding: 1rem;
         }
@@ -88,8 +89,22 @@
             border-radius: 8px;
             line-height: 1.5;
             max-width: 90%;
+            min-width: 0;
+            overflow-wrap: anywhere;
             padding: 0.75rem 0.9rem;
             white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .message mjx-container {
+            max-width: 100% !important;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        .message mjx-container[display="true"] {
+            display: block;
+            margin: 0.5rem 0;
+            text-align: left !important;
+            white-space: normal;
         }
         .message.ai {
             align-self: flex-start;
@@ -224,6 +239,25 @@
 
 {% if notes %}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['\\(', '\\)'], ['$', '$']],
+            displayMath: [['\\[', '\\]'], ['$$', '$$']],
+            processEscapes: true
+        },
+        chtml: {
+            linebreaks: {
+                automatic: true,
+                width: 'container'
+            }
+        },
+        startup: {
+            typeset: false
+        }
+    };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 {{ note_progress|json_script:"noteProgressData" }}
 <script>
     const chatUrl = "{% url 'pdf_chat' subject_name %}";
@@ -252,6 +286,7 @@
     let currentScale = 1.2;
     let renderTask = null;
     let progressSaveTimer = null;
+    const pendingMathElements = new Set();
 
     if (window.pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -263,11 +298,101 @@
     function appendMessage(text, type) {
         const message = document.createElement('div');
         message.className = `message ${type}`;
-        message.textContent = text;
+        setMessageContent(message, text);
         chatLog.appendChild(message);
+        renderMath(message);
         chatLog.scrollTop = chatLog.scrollHeight;
         return message;
     }
+
+    function setMessageContent(element, text) {
+        element.innerHTML = renderSafeMessage(normalizePlainMathLines(text));
+    }
+
+    function normalizePlainMathLines(text) {
+        return String(text).split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g)
+            .map((part) => {
+                if (/^(\$\$[\s\S]*\$\$|\$[^$\n]+\$|\\\[[\s\S]*\\\]|\\\([\s\S]*\\\))$/.test(part)) {
+                    return part;
+                }
+                return part.split('\n').map((line) => {
+                    const trimmed = line.trim();
+                    if (!isPlainMathLine(trimmed)) return line;
+                    return line.replace(trimmed, `\\[ ${normalizePlainMath(trimmed)} \\]`);
+                }).join('\n');
+            })
+            .join('');
+    }
+
+    function isPlainMathLine(line) {
+        if (!line || line.includes(':') || /^(step|where|therefore|using|after|marks)/i.test(line)) {
+            return false;
+        }
+        return /[=∫δπ∞^_]/.test(line) && /[A-Za-z]\s*\(|∫|δ|π/.test(line);
+    }
+
+    function normalizePlainMath(line) {
+        return line
+            .replace(/∫\s*∞\s*[-−]\s*∞/g, '\\int_{-\\infty}^{\\infty}')
+            .replace(/∫\s*[-−]\s*∞\s*\^?\s*∞/g, '\\int_{-\\infty}^{\\infty}')
+            .replace(/∞/g, '\\infty')
+            .replace(/π/g, '\\pi')
+            .replace(/δ/g, '\\delta')
+            .replace(/\bcos\s*\(/g, '\\cos(')
+            .replace(/\bsin\s*\(/g, '\\sin(')
+            .replace(/\btan\s*\(/g, '\\tan(')
+            .replace(/\s+dx\b/g, '\\,dx');
+    }
+
+    function renderSafeMessage(text) {
+        return String(text).split(/(\$\$[\s\S]*?\$\$|\$[^$\n]+\$|\\\[[\s\S]*?\\\]|\\\([\s\S]*?\\\))/g)
+            .map((part) => {
+                if (/^(\$\$[\s\S]*\$\$|\$[^$\n]+\$|\\\[[\s\S]*\\\]|\\\([\s\S]*\\\))$/.test(part)) {
+                    return escapeHtml(part);
+                }
+                return renderSafeText(part);
+            })
+            .join('');
+    }
+
+    function renderSafeText(text) {
+        return escapeHtml(text)
+            .replace(/\*\*\*([^*\n][\s\S]*?[^*\n])\*\*\*/g, '<strong><em>$1</em></strong>')
+            .replace(/\*\*([^*\n][\s\S]*?[^*\n])\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*\n][^*\n]*?[^*\n])\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+    }
+
+    function escapeHtml(text) {
+        return String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderMath(element) {
+        pendingMathElements.add(element);
+        flushMath();
+    }
+
+    function flushMath() {
+        if (!window.MathJax || !window.MathJax.typesetPromise || pendingMathElements.size === 0) {
+            return;
+        }
+        const elements = Array.from(pendingMathElements);
+        pendingMathElements.clear();
+        if (window.MathJax.typesetClear) {
+            window.MathJax.typesetClear(elements);
+        }
+        window.MathJax.typesetPromise(elements).catch(() => {
+            elements.forEach((element) => pendingMathElements.add(element));
+        });
+    }
+
+    window.addEventListener('load', flushMath);
+    setTimeout(flushMath, 1000);
 
     function setViewerLoading(message) {
         pdfStatus.textContent = message;
@@ -436,14 +561,15 @@
             });
             const data = await response.json();
             if (response.ok) {
-                waitingMessage.textContent = data.answer_source === 'fallback'
+                setMessageContent(waitingMessage, data.answer_source === 'fallback'
                     ? `${data.answer}\n\n(Local model is unavailable, so I used the PDF text fallback.)`
-                    : data.answer;
+                    : data.answer);
             } else {
-                waitingMessage.textContent = data.error || 'I could not answer that question.';
+                setMessageContent(waitingMessage, data.error || 'I could not answer that question.');
             }
+            renderMath(waitingMessage);
         } catch (error) {
-            waitingMessage.textContent = 'I could not reach the chat service. Please try again.';
+            setMessageContent(waitingMessage, 'I could not reach the chat service. Please try again.');
         }
         chatLog.scrollTop = chatLog.scrollHeight;
     });

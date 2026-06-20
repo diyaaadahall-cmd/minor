@@ -28,9 +28,12 @@ def _answer_with_ollama(question, context, note_name):
 
     prompt = (
         "You are an academic tutor helping a student understand a PDF note.\n"
-        "Answer the question using only the provided PDF context. "
-        "If the context does not contain enough information, say that the answer is not available in the selected PDF. "
         "Be clear, concise, and explain important terms when useful.\n\n"
+        "Give the answer in the most marks scoring format.\n"
+        "Format every mathematical expression as valid LaTeX for MathJax: "
+        "use \\( ... \\) or $...$ for inline math and \\[ ... \\] for display equations. "
+        "Do not write plain-text formulas like '∫∞ -∞' or 'delta(f)'; write "
+        "\\[ X(f) = \\int_{-\\infty}^{\\infty} f(x)e^{-i2\\pi f x}\\,dx \\] instead.\n"
         f"Selected PDF: {note_name}\n\n"
         f"PDF context:\n{context}\n\n"
         f"Student question: {question}"
@@ -41,13 +44,16 @@ def _answer_with_ollama(question, context, note_name):
         "messages": [
             {
                 "role": "system",
-                "content": "You answer as a helpful tutor. Do not invent facts outside the supplied PDF context.",
+                "content": (
+                    "You answer as a helpful tutor. Use clean MathJax-compatible LaTeX for all formulas. "
+                    "Keep equations readable and do not mix raw plain-text math with prose."
+                ),
             },
             {"role": "user", "content": prompt},
         ],
         "options": {
             "temperature": 0.2,
-            "num_predict": 500,
+            "num_predict": 1500
         },
     }
 
