@@ -5,6 +5,7 @@ from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
+from .llm import LLMUnavailable, answer_from_context
 from .models import Note, NoteProgress
 
 def home(request):
@@ -114,10 +115,10 @@ def _extract_pdf_text(pdf_path):
         return ""
 
 
-def _find_relevant_answer(pdf_text, question):
+def _find_relevant_context(pdf_text, question, max_chars=4500):
     normalized_text = re.sub(r'\s+', ' ', pdf_text).strip()
     if not normalized_text:
-        return "I could not read text from this PDF. It may be scanned as images or protected."
+        return ""
 
     question_words = {
         word for word in re.findall(r'[a-zA-Z]{3,}', question.lower())
@@ -135,18 +136,56 @@ def _find_relevant_answer(pdf_text, question):
     )
 
     best_chunks = [chunk for chunk in ranked_chunks[:4] if chunk.strip()]
-    answer = " ".join(best_chunks).strip()
+    context = " ".join(best_chunks).strip()
 
-    if not answer:
-        answer = normalized_text[:1000]
+    if not context:
+        context = normalized_text[:max_chars]
+
+    if len(context) > max_chars:
+        context = context[:max_chars].rsplit(' ', 1)[0]
+
+    return context
+
+
+def _find_relevant_answer(pdf_text, question):
+    normalized_text = re.sub(r'\s+', ' ', pdf_text).strip()
+    if not normalized_text:
+        return "I could not read text from this PDF. It may be scanned as images or protected."
+
+    context = _find_relevant_context(pdf_text, question, max_chars=1400)
+    answer = context or normalized_text[:1000]
 
     if len(answer) > 1400:
         answer = answer[:1400].rsplit(' ', 1)[0] + "..."
+
+    question_words = {
+        word for word in re.findall(r'[a-zA-Z]{3,}', question.lower())
+        if word not in {'what', 'when', 'where', 'which', 'about', 'from', 'that', 'this', 'with', 'into', 'your', 'does'}
+    }
 
     if question_words and sum(1 for word in question_words if word in answer.lower()) == 0:
         return "I could not find a direct match in the PDF. Here is a nearby excerpt I can read:\n\n" + answer
 
     return answer
+
+
+def _answer_pdf_question(pdf_text, question, note_name):
+    if not re.sub(r'\s+', ' ', pdf_text).strip():
+        return (
+            "I could not read text from this PDF. It may be scanned as images or protected.",
+            "fallback",
+        )
+
+    context = _find_relevant_context(pdf_text, question)
+    fallback_answer = _find_relevant_answer(pdf_text, question)
+
+    if not context:
+        return fallback_answer, "fallback"
+
+    try:
+        return answer_from_context(question, context, note_name), "open_llm"
+    except LLMUnavailable:
+        return fallback_answer, "fallback"
 
 
 def pdf_chat(request, subject_name):
@@ -168,11 +207,13 @@ def pdf_chat(request, subject_name):
             raise Http404("No PDFs uploaded for this subject.")
 
     pdf_text = _extract_pdf_text(note.pdf.path)
-    answer = _find_relevant_answer(pdf_text, question)
+    note_name = note.pdf.name.split('/')[-1]
+    answer, answer_source = _answer_pdf_question(pdf_text, question, note_name)
 
     return JsonResponse({
         'answer': answer,
-        'note': note.pdf.name.split('/')[-1],
+        'answer_source': answer_source,
+        'note': note_name,
     })
 
 

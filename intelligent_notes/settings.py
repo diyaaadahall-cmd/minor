@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -116,7 +117,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
-from pathlib import Path
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+# Open LLM integration for PDF chat. Defaults to Ollama with an openly
+# available local model; install Ollama and run:
+#   ollama pull llama3.2:3b
+#   ollama serve
+OPEN_LLM_ENABLED = os.getenv('OPEN_LLM_ENABLED', 'true').lower() == 'true'
+OPEN_LLM_PROVIDER = os.getenv('OPEN_LLM_PROVIDER', 'ollama')
+OLLAMA_ENDPOINT = os.getenv('OLLAMA_ENDPOINT', 'http://localhost:11434/api/chat')
+OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'llama3.2:3b')
+OLLAMA_TIMEOUT_SECONDS = int(os.getenv('OLLAMA_TIMEOUT_SECONDS', '45'))

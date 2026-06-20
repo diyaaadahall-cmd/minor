@@ -435,7 +435,13 @@
                 body: formData,
             });
             const data = await response.json();
-            waitingMessage.textContent = response.ok ? data.answer : (data.error || 'I could not answer that question.');
+            if (response.ok) {
+                waitingMessage.textContent = data.answer_source === 'fallback'
+                    ? `${data.answer}\n\n(Local model is unavailable, so I used the PDF text fallback.)`
+                    : data.answer;
+            } else {
+                waitingMessage.textContent = data.error || 'I could not answer that question.';
+            }
         } catch (error) {
             waitingMessage.textContent = 'I could not reach the chat service. Please try again.';
         }
